@@ -29,7 +29,19 @@ usage() {
     echo "  -h(--help): display this help and exit."
     echo "  -d(--disksize): disk size in GB. (default - 30G)"
     echo "  -ns(--nameserver): IP address of the nameserver. (default - uses host's)"
-    echo "  -dev(--networkdev): specify network devices to include."
+    echo "Options (network devices):"
+    echo "  --model: <enum>"
+    echo "  --bridge: <bridge>"
+    echo "  --macaddr: <XX:XX:XX:XX:XX:XX>"
+    echo "  --firewall: 1|0"
+    echo "  --link_down: 1|0"
+    echo "  --mtu: <integer>"
+    echo "  --queues: <integer>"
+    echo "  --rate: <integer>"
+    echo "  --tag: <integer>"
+    echo "  --trunks: <vlanid[;vlanid...]>"
+    echo "  --model: <macaddr>"
+    echo "For more information regarding QM, see https://pve.proxmox.com/pve-docs/qm.1.html"
     exit 1
 }
 
@@ -102,6 +114,56 @@ menu() {
                 HOSTBOOT=False
                 shift
                 ;;
+            --model)
+                check_arg $1 $2
+                MODEL=$2
+                shift 2
+                ;;
+            --bridge)
+                check_arg $1 $2
+                BRIDGE=$2
+                shift 2
+                ;;
+            --macaddr)
+                check_arg $1 $2
+                MACADDR=$2
+                shift 2
+                ;;
+            --firewall)
+                check_arg $1 $2
+                FIREWALL=$2
+                shift 2
+                ;;
+            --link_down)
+                check_arg $1 $2
+                LINK_DOWN=$2
+                shift 2
+                ;;
+            --mtu)
+                check_arg $1 $2
+                MTU=$2
+                shift 2
+                ;;
+            --queues)
+                check_arg $1 $2
+                QUEUES=$2
+                shift 2
+                ;;
+            --rate)
+                check_arg $1 $2
+                RATE=$2
+                shift 2
+                ;;
+            --tag)
+                check_arg $1 $2
+                TAG=$2
+                shift 2
+                ;;
+            --trunks)
+                check_arg $1 $2
+                TRUNKS=$2
+                shift 2
+                ;;
             -h | --help)
                 usage
                 exit 1
@@ -146,6 +208,44 @@ create_vm() {
         echo "NAMESERVER: $NAMESERVER"
     fi
 
+    if [ "$MODEL" != "" ]; then
+        NETWORK="$NETWORK,model=$MODEL"
+    fi
+    if [ "$BRIDGE" != "" ]; then
+        NETWORK="$NETWORK,bridge=$BRIDGE"
+    fi
+    if [ "$MACADDR" != "" ]; then
+        NETWORK="$NETWORK,macaddr=$MACADDR"
+    fi
+    if [ "$FIREWALL" != "" ]; then
+        NETWORK="$NETWORK,firewall=$FIREWALL"
+    fi
+    if [ "$LINK_DOWN" != "" ]; then
+        NETWORK="$NETWORK,link_down=$LINK_DOWN"
+    fi
+    if [ "$MTU" != "" ]; then
+        NETWORK="$NETWORK,mtu=$MTU"
+    fi
+    if [ "$QUEUES" != "" ]; then
+        NETWORK="$NETWORK,queues=$QUEUES"
+    fi
+    if [ "$RATE" != "" ]; then
+        NETWORK="$NETWORK,rate=$RATE"
+    fi
+    if [ "$TAG" != "" ]; then
+        NETWORK="$NETWORK,tag=$TAG"
+    fi
+    if [ "$TRUNKS" != "" ]; then
+        NETWORK="$NETWORK,trunks=$TRUNKS"
+    fi
+
+    if [ "$NETWORK" != "" ]; then
+        NETWORK=${NETWORK:1}
+        qm set $ID --net0 $NETWORK
+        echo "Network settings applied."
+    fi
+
+
     qm set $ID --scsi0 $DEST:${DISK_SIZE}
     qm set $ID -efidisk0 $DEST:${DISK_SIZE},efitype=4m
     qm set $ID -machine q35
@@ -154,8 +254,6 @@ create_vm() {
     qm set $ID --ide2 local:iso/$ISO_NAME,media=cdrom
     qm set $ID --boot order=ide2
     echo "ISO successfully mounted"
-
-    # UEFI, machine -> q35, QEMU agent, bridge/network device
 
     if [ "$START" == "True" ]; then
         qm start $ID
