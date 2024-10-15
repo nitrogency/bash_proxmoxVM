@@ -114,6 +114,11 @@ menu() {
                 HOSTBOOT=False
                 shift
                 ;;
+            -d | --disksize)
+                check_arg $1 $2
+                DISK_SIZE=$2
+                shift 2
+                ;;
             --model)
                 check_arg $1 $2
                 MODEL=$2
